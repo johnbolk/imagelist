@@ -66,7 +66,7 @@ image_list.set_key_name(0, 'new_name')  # Change the first PhotoImage's key name
 
 The **ImageList** class's **grayed** property provides access to the "grayed" PhotoImage collection. Each PhotoImage element in the **ImageList** collection has a corresponding "grayed" PhotoImage in the **ImageList.Grayed** collection. These paired images share the same index number and key name values.
 
-This example illustrates how the **ImageList** can to used to provide a "grayed" image to a Tkinter Button widget when it is made inactive:
+This example illustrates how the **ImageList** can be used to provide a "grayed" image to a Tkinter Button widget when it is made inactive:
 
 ```
 import tkinter as tk
