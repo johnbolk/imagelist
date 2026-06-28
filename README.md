@@ -165,8 +165,6 @@ key_name = filename[:extension]
 
 # ImageList Usage Examples
 
-Source files and image files for these examples can be found at the [imagelist package's GitHub Repository](https://github.com/johnbolk/imagelist)
-
 This first example shows how the **ImageList** can be used to provide the "inactive" or "grayed" image for a Tkinter Button widget regardless of the computer's operating system. As explained earlier, when running on a **macOS** computer, a tkinter widget does not display a "grayed" image when that widget's **state** is set to **'disabled'**. In this example, the **ImageList.Grayed** collection is used provide the "grayed" image for the widget when running on a **macOS** platform.
 
 ```
