@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=40.8.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "imagelist"
+version = "1.2.0"
+description = "A managed collection of PhotoImages for use with Tkinter widgets."
+readme = "README.md"
+authors = [
+    {name = "John Bolkcom", email = "johnbolk6502@gmail.com"}
+]
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.7"
+dependencies = ["pillow>=9.5.0"]
+keywords = ["Tkinter", "PhotoImage", "PIL", "macOS", "Icons"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+]
+
+[project.urls]
+Homepage = "https://github.com/johnbolk/imagelist.git"
