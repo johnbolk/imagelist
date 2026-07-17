@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "imagelist"
-version = "1.2.0"
+version = "1.2.1"
 description = "A managed collection of PhotoImages for use with Tkinter widgets."
 readme = "README.md"
 authors = [

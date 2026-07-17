@@ -2,9 +2,9 @@
 
 **A managed collection of PhotoImages for use with Tkinter widgets.**
 
-This package furnishes a convenient way of providing PhotoImages to Tkinter widgets that display images, such as Buttons, Labels, and Menus.
+This package provides a convenient way of creating and organizing PhotoImages for use with Tkinter widgets that display images, such as Buttons, Labels, and Menus.
 
-The **ImageList** class incorporates the capabilities of the **Python Imaging Library (PIL)** for both loading images from a wide variety of commonly used image file formats, and for resizing and reformating the original images into Tkinter compatible PhotoImages. Regardless of the original source image dimensions, every image that is added to the collection is resized ( if needed ) to the **image_size** that was specified when the **ImageList** was created. In addition to providing PhotoImages of uniform size, the **ImageList** class also provides image object persistence for Tkinter widgets by maintaining a reference for each PhotoImage in the collection.
+The **ImageList** class incorporates the capabilities of the **Python Imaging Library (PIL)** for loading images from a wide variety of image file formats, and for resizing and reformating the original images into Tkinter compatible PhotoImages. Regardless of the original source image dimensions, every image that is added to the collection is resized ( if needed ) to the **image_size** that was specified when the **ImageList** was created. In addition to providing PhotoImages of uniform size, the **ImageList** class also provides image object persistence for Tkinter widgets by maintaining a reference for each PhotoImage in the collection.
 
 **Attention macOS Users :** When working with a Tkinter widget on either a **Windows** or a **Linux** based platform, the widget will display a "grayed" image when the widget's **state** option is set to **'disabled'**. This behavior visually indicates whether the widget is active or inactive. However, when using that same Tkinter widget on a **macOS** computer, the image displayed by the widget is left unchanged when the widget's **state** option is set to **'disabled'**. The **ImageList** class was designed to help resolve this issue by maintaining a corresponding collection of "grayed" PhotoImages that are also created from the image files. By assigning the corresponding "grayed" PhotoImage to the **image** option of a **'disabled'** widget, the widget can visually indicate that it is not active.
 
@@ -89,17 +89,17 @@ if platform.system() == 'Darwin':  # Check for the macOS platform
 
 ## ImageList
 
-### ImageList( resource_folder=' ', image_size=( 16, 16 ), auto_load=False )
+### ImageList( *resource_folder*=' ', *image_size*=( 16, 16 ), *auto_load*=False )
 
 Constructs and initializes the PhotoImage collection.
 
-* **resource_folder: str -** The path of the resource file folder for the image files, **default = ' '.**
+* ***resource_folder* : str -** The path of the resource file folder for the image files, **default = ' '.**
 
-* **image_size: tuple[ int, int ] -** The size ( width, height ) of the PhotoImages, **default = ( 16, 16 ) pixels.**
+* ***image_size* : tuple[ int, int ] -** The size ( width, height ) of the PhotoImages, **default = ( 16, 16 ) pixels.**
 
-* **auto_load: bool -** Automatically load all the resource folder's image files if True, **default = False.**
+* ***auto_load* : bool -** Automatically load all the resource folder's image files if True, **default = False.**
 
-The **resource_folder** string is used internally by the **add( image_file, key_name=None)** method to construct the full path name when adding an image to the collection.
+The **resource_folder** string is used internally by the **add( *image_file*, *key_name*=None)** method to construct the full path name when adding an image to the collection.
 
 ```
 full_path_name = os.path.join(resource_folder, image_file)
@@ -114,58 +114,50 @@ key_name = filename[:extension]
 
 ### Properties
 
-* **blank_image: PhotoImage -** A blank ( or transparent ) PhotoImage. ( readonly )
+* **blank_image : PhotoImage -** A blank ( or transparent ) PhotoImage. ( readonly )
 
-* **grayed: ImageList.Grayed -** A managed collection of grayed PhotoImages. ( readonly )
+* **grayed : ImageList.Grayed -** A managed collection of grayed PhotoImages. ( readonly )
 
-* **image_size: tuple[ int, int ] -** The size ( width, height ) of the PhotoImages in the collection. ( readonly )
+* **image_size : tuple[ int, int ] -** The size ( width, height ) of the PhotoImages in the collection. ( readonly )
 
-* **keys: list[ str ] -** A list of the key names currently assigned to the PhotoImages. ( readonly )
+* **keys : list[ str ] -** A list of the key names currently assigned to the PhotoImages. ( readonly )
 
-* **resource_folder: str -** The path of the resource file folder for the image files. ( read / write )
+* **resource_folder : str -** The path of the resource file folder for the image files. ( read / write )
 
 <div class="page"/>
 
 ### Methods
 
-* **add( image_file, key_name=None ) -> bool :** Add an image with an optional key name to the end of the collection. The full path name of the image file is constructed from the **resource_folder** property value and the **image_file** parameter value.
-    * **image_file: str -** The image file to add to the collection.
-    * **key_name: str | None -** The optional key name of the image (not case-sensitive).
-
-    **Returns : True** if the image was successfully added **, False** otherwise
+* **add( *image_file*, *key_name*=None ) -> bool :** Add an image with an optional key name to the end of the collection. The full path name of the image file is constructed from the **resource_folder** property value and the **image_file** parameter value. The method returns **True** if the image was successfully added **, False** otherwise
+    * ***image_file* : str -** The image file to add to the collection.
+    * ***key_name* : str | None -** The optional key name of the image (not case-sensitive).
 
 * **clear( ) :** Remove all the images and key names from the collection.
 
-* **contains_key( name ) -> bool :** Determine if the collection has an image with the specified key name.
-    * **name: str -** The specified key name of the image (not case-sensitive).
+* **contains_key( *name* ) -> bool :** Determine if the collection has an image with the specified key name. The method returns **True** if the collection contains the key name **, False** otherwise.
+    * ***name* : str -** The specified key name of the image (not case-sensitive).
 
-    **Returns : True** if the collection contains the key name **, False** otherwise.
+* **extend( *image_list* ) -> bool :** Add a PhotoImage collection to the end of the current collection. The **image_size** property of the PhotoImage collection must match that of the current collection in order to be successfully added. The method returns **True** if the PhotoImage collection was successfully added **, False** otherwise.
+    * ***image_list* : ImageList  -** The specified PhotoImage list.
 
-* **extend( image_list ) -> bool :** Add a PhotoImage collection to the end of the current collection. The **image_size** property of the PhotoImage collection must match that of the current collection in order to be successfully added.
-    * **image_list: ImageList  -** The specified PhotoImage list.
+* **index_of_key( *name* ) -> int :** Return the zero-based index of the image with the specified key name. The method returns the **index** value of the first occurrence of the key name **, -1** otherwise.
+    * ***name* : str -** The specified key name of the image (not case-sensitive).
 
-    **Returns : True** if the PhotoImage collection was successfully added **, False** otherwise.
+* **remove_at( *index* ) :** Remove an image from the collection at the specified index.
+    * ***index* : str -** The zero-based index value of the image in the collection
 
-* **index_of_key( name: str ) -> int :** Return the zero-based index of the image with the specified key name.
-    * **name: str -** The specified key name of the image (not case-sensitive).
+* **remove_by_key( *name* ) :** Remove the image with the specified key name from the collection.
+    * ***name* : str -** The specified key name of the image (not case-sensitive).
 
-    **Returns :** The **index** of the first occurrence of the key name **, -1** otherwise.
-
-* **remove_at( index: int ) :** Remove an image from the collection at the specified index.
-    * **index -** The zero-based index value of the image in the collection
-
-* **remove_by_key( name: str ) :** Remove the image with the specified key name from the collection.
-    * **name: str -** The specified key name of the image (not case-sensitive).
-
-* **set_key_name( index: int, name: str ) :** Set the key name for an image in the collection.
-    * **index -** The zero-based index value of the image in the collection.
-    * **name -** The name to be set as the image's key name (not case-sensitive).
+* **set_key_name( *index*, *name* ) :** Set the key name for an image in the collection.
+    * ***index* : int -** The zero-based index value of the image in the collection.
+    * ***name* : str -** The name to be set as the image's key name (not case-sensitive).
 
 <div class="page"/>
 
 # ImageList Usage Examples
 
-This first example shows how the **ImageList** can be used to provide the "inactive" or "grayed" image for a Tkinter Button widget regardless of the computer's operating system. As explained earlier, when running on a **macOS** computer, a tkinter widget does not display a "grayed" image when that widget's **state** is set to **'disabled'**. In this example, the **ImageList.Grayed** collection is used provide the "grayed" image for the widget when running on a **macOS** platform.
+This first example shows how the **ImageList** can be used to provide the "inactive" or "grayed" image for a Tkinter Button widget regardless of the computer's operating system. As explained earlier, when running on a **macOS** computer, a tkinter widget does not display a "grayed" image when that widget's **state** is set to **'disabled'**. In this example, the **ImageList's** "grayed" collection is used provide the "grayed" image for the widget when running on a **macOS** platform.
 
 ```
 import platform
