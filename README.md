@@ -4,7 +4,7 @@
 
 This package provides a convenient way of creating and organizing PhotoImages for use with Tkinter widgets that display images, such as Buttons, Labels, and Menus.
 
-The **ImageList** class incorporates the capabilities of the **Python Imaging Library (PIL)** for loading images from a wide variety of image file formats, and for resizing and reformating the original images into Tkinter compatible PhotoImages. Regardless of the original source image dimensions, every image that is added to the collection is resized ( if needed ) to the **image_size** that was specified when the **ImageList** was created. In addition to providing PhotoImages of uniform size, the **ImageList** class also provides image object persistence for Tkinter widgets by maintaining a reference for each PhotoImage in the collection.
+The **ImageList** class incorporates the capabilities of the **CairoSVG** and **Python Imaging Library (PIL)** packages for loading images from a wide variety of image file formats, and for resizing and reformating the original images into Tkinter compatible PhotoImages. Regardless of the original source image dimensions, every image that is added to the collection is resized ( if needed ) to the **image_size** that was specified when the **ImageList** was created. In addition to providing PhotoImages of uniform size, the **ImageList** class also provides image object persistence for Tkinter widgets by maintaining a reference for each PhotoImage in the collection.
 
 **Attention macOS Users :** When working with a Tkinter widget on either a **Windows** or a **Linux** based platform, the widget will display a "grayed" image when the widget's **state** option is set to **'disabled'**. This behavior visually indicates whether the widget is active or inactive. However, when using that same Tkinter widget on a **macOS** computer, the image displayed by the widget is left unchanged when the widget's **state** option is set to **'disabled'**. The **ImageList** class was designed to help resolve this issue by maintaining a corresponding collection of "grayed" PhotoImages that are also created from the image files. By assigning the corresponding "grayed" PhotoImage to the **image** option of a **'disabled'** widget, the widget can visually indicate that it is not active.
 
@@ -64,13 +64,16 @@ second_image = image_list['key_name_1']  # Get the second PhotoImage
 image_list.set_key_name(0, 'new_name')  # Change the first PhotoImage's key name
 ```
 
-The **ImageList** class's **grayed** property provides access to the "grayed" PhotoImage collection. Each PhotoImage element in the **ImageList** collection has a corresponding "grayed" PhotoImage in the **ImageList.Grayed** collection. These paired images share the same index number and key name values.
+The **ImageList** class's **grayed** property provides access to the "grayed" PhotoImage collection. Every PhotoImage element in the **ImageList** collection has a corresponding "grayed" PhotoImage in the **ImageList's grayed** collection. These paired images share the same index number and key name values.
 
 This example illustrates how the **ImageList** can be used to provide a "grayed" image to a Tkinter Button widget when it is made inactive:
 
 ```
-import tkinter as tk
 import platform
+import tkinter as tk
+from imagelist import ImageList
+
+...
 
 image_list = ImageList()
 image_list.add('image_file', 'key_name')  # Add an image file and a key name
@@ -197,8 +200,8 @@ class DemoForm(tk.Frame):
         super().__init__(master, bd=3, relief='ridge', padx=50, pady=20)
         self.grid()
 
-        image_list = ImageList(image_size=(48, 48))
-        image_list.add('image_folder/printer.png')  # Add an image of a printer
+        image_list = ImageList('image_folder', (48, 48))
+        image_list.add('printer.png')
         self._button = MacButton(self, image_list, 0, self._on_print)
         self._button.enabled = False
         self._button.grid(pady=20)
@@ -225,7 +228,7 @@ if __name__ == '__main__':
 
 <div class="page"/>
 
-This next example demonstrates how to use the **auto_load** option to create an instance of an **ImageList** class that automatically adds all the image files located in the specified **'image_folder'** ( 'Help.ico', 'none.ico', 'settings.ico', 'info.png', 'printer.png', 'Stop.png' ). This script creates and displays a group of four image buttons. Each of these buttons is identified by the key name value of it's assigned image. Each button's event handler displays the name of that button when it is clicked.
+This next example demonstrates how to use the **auto_load** option to create an instance of an **ImageList** class that automatically adds all the image files located in the specified **'image_folder'** ( 'Help.ico', 'settings.ico', 'info.png', 'printer.png', 'power.svg', shutdown.svg ). This script creates and displays a group of four image buttons. Each of these buttons is identified by the key name value of it's assigned image. Each button's event handler displays the name of that button when it is clicked.
 
 ```
 import tkinter as tk
@@ -243,7 +246,7 @@ class DemoForm(tk.Frame):
         group = tk.LabelFrame(self, text='Image Buttons')
         image_list = ImageList('image_folder', (32, 32), True)
         image_width, image_height = image_list.image_size
-        for i, name in enumerate(['printer', 'settings', 'help', 'stop']):
+        for i, name in enumerate(['printer', 'settings', 'help', 'shutdown']):
 
             def handler(index=image_list.index_of_key(name)):
                 text = '???' if index < 0 else image_list.keys[index].title()

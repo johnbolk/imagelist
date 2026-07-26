@@ -15,7 +15,7 @@ class DemoForm(tk.Frame):
         group = tk.LabelFrame(self, text='Image Buttons')
         image_list = ImageList('image_folder', (32, 32), True)
         image_width, image_height = image_list.image_size
-        for i, name in enumerate(['printer', 'settings', 'help', 'stop']):
+        for i, name in enumerate(['printer', 'settings', 'help', 'shutdown']):
 
             def handler(index=image_list.index_of_key(name)):
                 text = '???' if index < 0 else image_list.keys[index].title()

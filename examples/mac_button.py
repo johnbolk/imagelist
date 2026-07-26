@@ -37,8 +37,8 @@ class DemoForm(tk.Frame):
         super().__init__(master, bd=3, relief='ridge', padx=50, pady=20)
         self.grid()
 
-        image_list = ImageList(image_size=(48, 48))
-        image_list.add('image_folder/printer.png')  # Add an image of a printer
+        image_list = ImageList('image_folder', (48, 48))
+        image_list.add('printer.png')
         self._button = MacButton(self, image_list, 0, self._on_print)
         self._button.enabled = False
         self._button.grid(pady=20)

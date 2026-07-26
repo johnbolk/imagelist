@@ -5,14 +5,16 @@ This module provides the following class definition:
 * ImageList - A managed collection of PhotoImages for use with Tkinter widgets
 """
 
-__version__ = '1.2.0'
+__version__ = '1.3.0'
 
+import io
 import os
 from warnings import warn
 from dataclasses import dataclass, field
 from typing import Any, Tuple, List, Union, Optional
 from PIL.ImageTk import PhotoImage
 from PIL import Image, UnidentifiedImageError
+import cairosvg
 
 
 class ImageList:
@@ -287,23 +289,33 @@ class ImageList:
 
     def _get_image(self, filename: str) -> Tuple[bool, PhotoImage, PhotoImage]:
         """Try to obtain an image from the specified source."""
-        success, image = False, Image.new('RGBA', self.image_size, 0)
         file = os.path.join(self.resource_folder, filename)
+        image = Image.new('RGBA', self.image_size, 0)
+        success, message = False, ''
         index = file.rfind('.')
-        if index > 0:
-            if not os.path.isfile(file):  # Try an upper case extension
-                file = file[:index] + file[index:].upper()
-                if not os.path.isfile(file):  # Try a lower case extension
-                    file = file[:index] + file[index:].lower()
+        file = self._adjust_extension(file, index)
         if os.path.isfile(file):
-            try:
-                image = Image.open(file).convert('RGBA')
-                success = True
-            except UnidentifiedImageError:
-                if self._verbose:
-                    warn(f"'{filename}' is not an Image File!", stacklevel=3)
+            if file[index:].lower() == '.svg':
+                png_data = cairosvg.svg2png(url=file)
+                if png_data is not None:
+                    try:
+                        image = Image.open(io.BytesIO(png_data))
+                        success = True
+                    except UnidentifiedImageError:
+                        message = f"'{filename}' is not a Valid Image File!"
+                else:
+                    message = f"'{filename}' is not a Valid Image File!"
+            else:
+                try:
+                    image = Image.open(file).convert('RGBA')
+                    success = True
+                except UnidentifiedImageError:
+                    message = f"'{filename}' is not a Valid Image File!"
         else:
-            warn(f"The file: '{file}' does not Exist!", stacklevel=3)
+            message = f"The file: '{file}' does not Exist!"
+
+        if self._verbose and not success:
+            warn(message, stacklevel=3)
 
         if image.size != self.image_size:
             image = image.resize(self.image_size, Image.Resampling.LANCZOS)
@@ -312,6 +324,16 @@ class ImageList:
         grayed_alpha = alpha.point(lambda x: x * 0.35)
         grayed = Image.merge('RGBA', (red, green, blue, grayed_alpha))
         return success, PhotoImage(image), PhotoImage(grayed)
+
+    @staticmethod
+    def _adjust_extension(file: str, index: int) -> str:
+        """Adjust the file extension if necessary."""
+        if index > 0:
+            if not os.path.isfile(file):  # Try an upper case extension
+                file = file[:index] + file[index:].upper()
+                if not os.path.isfile(file):  # Try a lower case extension
+                    file = file[:index] + file[index:].lower()
+        return file
 
     @staticmethod
     def _warn_item(item: Union[int, str]) -> None:

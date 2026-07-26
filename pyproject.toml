@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "imagelist"
-version = "1.2.1"
+version = "1.3.0"
 description = "A managed collection of PhotoImages for use with Tkinter widgets."
 readme = "README.md"
 authors = [
@@ -13,8 +13,8 @@ authors = [
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.7"
-dependencies = ["pillow>=9.5.0"]
-keywords = ["Tkinter", "PhotoImage", "PIL", "macOS", "Icons"]
+dependencies = ["pillow>=9.5.0", "CairoSVG>=2.7.1"]
+keywords = ["Tkinter", "PhotoImage", "PIL", "macOS", "Icons", "SVG"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
