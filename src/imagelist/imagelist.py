@@ -5,7 +5,7 @@ This module provides the following class definition:
 * ImageList - A managed collection of PhotoImages for use with Tkinter widgets
 """
 
-__version__ = '1.3.0'
+__version__ = '1.3.1'
 
 import io
 import os
@@ -14,7 +14,11 @@ from dataclasses import dataclass, field
 from typing import Any, Tuple, List, Union, Optional
 from PIL.ImageTk import PhotoImage
 from PIL import Image, UnidentifiedImageError
-import cairosvg
+try:
+    import cairosvg
+    SVG_VALID = True
+except OSError:
+    SVG_VALID = False
 
 
 class ImageList:
@@ -295,7 +299,7 @@ class ImageList:
         index = file.rfind('.')
         file = self._adjust_extension(file, index)
         if os.path.isfile(file):
-            if file[index:].lower() == '.svg':
+            if SVG_VALID and file[index:].lower() == '.svg':
                 png_data = cairosvg.svg2png(url=file)
                 if png_data is not None:
                     try:
