@@ -5,7 +5,7 @@ This module provides the following class definition:
 * ImageList - A managed collection of PhotoImages for use with Tkinter widgets
 """
 
-__version__ = '1.3.5'
+__version__ = '1.3.6'
 
 # pylint: disable=no-name-in-module
 import io
@@ -368,7 +368,6 @@ class ImageList:
         warn(f"'{item}' is not a valid {label} value!", stacklevel=3)
 
 
-# pylint: disable=no-member
 @dataclass
 class Style:
     """The image rendering style parameters."""
@@ -421,18 +420,19 @@ class LoadSVG:
 
     def _init_image_area(self, element: XElement) -> None:
         """Initialize the image area."""
-        width = round(self._get_float(element.read_attribute('width')))
-        height = round(self._get_float(element.read_attribute('height')))
+        start_x = self._get_float(element.read_attribute('x'))
+        start_y = self._get_float(element.read_attribute('y'))
+        width = self._get_float(element.read_attribute('width'))
+        height = self._get_float(element.read_attribute('height'))
         text = element.read_attribute('viewBox')
         if text:
             view_box = tuple(float(value) for value in text.split())
-            aspect = view_box[2] / view_box[3]
         else:
             width = height if width == 0 else width
             height = width if height == 0 else height
-            view_box = (0.0, 0.0, width, height)
-            aspect = width / height
+            view_box = (start_x, start_y, width, height)
 
+        aspect = view_box[2] / view_box[3]
         size_x, size_y = round(128 * aspect), 128
         self._surface = ImageSurface(Format.ARGB32, size_x, size_y)
         self._context = Context(self._surface)
