@@ -5,7 +5,9 @@ This module provides the following class definition:
 * ImageList - A managed collection of PhotoImages for use with Tkinter widgets
 """
 
-__version__ = '1.3.6'
+from __future__ import annotations
+
+__version__ = '1.3.7'
 
 # pylint: disable=no-name-in-module
 import io
@@ -13,7 +15,7 @@ import os
 import math
 from warnings import warn
 from dataclasses import dataclass, asdict, field, replace
-from typing import Any, Tuple, List, Dict, Union, Optional
+from typing import Any, Tuple, List, Dict, Union, Optional, overload
 from xdocument import XDocument, XElement
 from cairo import ImageSurface, Context, Format, FillRule, Matrix
 from pycairotk import LineCap, LineJoin, Antialias, Vector
@@ -38,7 +40,7 @@ class ImageList:
     class Grayed:
         """A managed collection of grayed PhotoImages."""
 
-        def __init__(self, parent: 'ImageList'):
+        def __init__(self, parent: ImageList):
             """Construct and initialize the collection."""
             self._image_list = parent
             self._grayed: List[PhotoImage] = parent._local.grayed
@@ -138,8 +140,16 @@ class ImageList:
         """Make the ImageList class an iterable collection."""
         return (image for image in self._local.images)
 
-    def __getitem__(self, item: Union[int, str, slice]) -> Any:
+    @overload
+    def __getitem__(self, item: Union[int, str]) -> Any:
         """Get the image with the specified index value or key name."""
+
+    @overload
+    def __getitem__(self, item: slice) -> ImageList:
+        """Get the specified slice of the ImageList."""
+
+    def __getitem__(self, item: Union[int, str, slice]) -> Any:
+        """Get the specified image or the specified slice of the ImageList."""
         image_list = ImageList(self.resource_folder, self.image_size)
         image = self._blank_image
         if isinstance(item, slice):
@@ -202,7 +212,7 @@ class ImageList:
         """
         return self._find_index(name)[0]
 
-    def extend(self, image_list: 'ImageList') -> bool:
+    def extend(self, image_list: ImageList) -> bool:
         """Add a PhotoImage collection to the end of the current collection.
 
         The image_size property of the PhotoImage collection must match that of
