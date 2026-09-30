@@ -7,21 +7,23 @@ This module provides the following class definition:
 
 from __future__ import annotations
 
-__version__ = '1.3.7'
+__version__ = '1.3.8'
 
 # pylint: disable=no-name-in-module
+# pylint: disable=no-member
 import io
 import os
 import math
 from warnings import warn
 from dataclasses import dataclass, asdict, field, replace
-from typing import Any, Tuple, List, Dict, Union, Optional, overload
+from typing import Any, Tuple, List, Dict, Union, Optional
 from xdocument import XDocument, XElement
 from cairo import ImageSurface, Context, Format, FillRule, Matrix
 from pycairotk import LineCap, LineJoin, Antialias, Vector
 from PIL.ImageTk import PhotoImage
 from PIL import Image, ImageColor, UnidentifiedImageError
 import numpy as np
+import cairo
 
 try:
     import cairosvg  # type: ignore
@@ -139,14 +141,6 @@ class ImageList:
     def __iter__(self) -> Any:
         """Make the ImageList class an iterable collection."""
         return (image for image in self._local.images)
-
-    @overload
-    def __getitem__(self, item: Union[int, str]) -> Any:
-        """Get the image with the specified index value or key name."""
-
-    @overload
-    def __getitem__(self, item: slice) -> ImageList:
-        """Get the specified slice of the ImageList."""
 
     def __getitem__(self, item: Union[int, str, slice]) -> Any:
         """Get the specified image or the specified slice of the ImageList."""
@@ -399,12 +393,14 @@ class LoadSVG:
 
     _surface: ImageSurface
     _context: Context
+    _result: np.ndarray
 
     def __init__(self, filename: str):
         """Construct and initialize the class."""
         self._image = None
         self._style = Style()
         self._render_mode: Dict[int, Any] = {}
+        self._masks: Dict[str, np.ndarray] = {}
         self._parse_shapes: Dict[str, Any] = {
             'path': self._parse_path,
             'line': self._parse_line,
@@ -418,8 +414,11 @@ class LoadSVG:
             root_element = XDocument(filename).root
             if root_element.name == 'svg':
                 self._init_image_area(root_element)
+                for child in root_element.children:
+                    if child.name == 'mask':
+                        self._process_mask(child, Style())
                 self._process_group(root_element, self._style)
-                self._image = self._construct_image()
+                self._image = Image.fromarray(self._result)  # type: ignore
         except (OSError, ZeroDivisionError, IndexError, ValueError):
             pass
 
@@ -444,6 +443,7 @@ class LoadSVG:
 
         aspect = view_box[2] / view_box[3]
         size_x, size_y = round(128 * aspect), 128
+        self._result = np.zeros((size_y, size_x, 4), np.uint8)
         self._surface = ImageSurface(Format.ARGB32, size_x, size_y)
         self._context = Context(self._surface)
         self._context.set_antialias(Antialias.BEST)
@@ -451,15 +451,48 @@ class LoadSVG:
         self._context.translate(-view_box[0], -view_box[1])
         self._render_mode = {0: self._context.fill, 1: self._context.stroke}
 
-    def _construct_image(self) -> Image.Image:
-        """Construct a PIL Image."""
+    def _erase_image(self) -> None:
+        """Erase the image surface."""
+        self._context.set_operator(cairo.OPERATOR_SOURCE)
+        self._context_set_source_rgba(NONE)
+        self._context.paint()
+
+    def _construct_image(self) -> np.ndarray:
+        """Construct an image array."""
         shape = (self._surface.get_height(), self._surface.get_width(), 4)
         buffer = self._surface.get_data()
         buffer_array = np.ndarray(shape, np.uint8, buffer)  # type: ignore
         image_array = buffer_array.copy()
         image_array[:, :, 0] = buffer_array[:, :, 2]
         image_array[:, :, 2] = buffer_array[:, :, 0]
-        return Image.fromarray(image_array)  # type: ignore
+        return image_array
+
+    def _add_image(self, image_array: np.ndarray) -> None:
+        """Add the image array to the result."""
+        for i in range(image_array.shape[0]):
+            for j in range(image_array.shape[1]):
+                alpha = image_array[i, j, 3] / 255
+                color = image_array[i, j]
+                self._result[i, j] = color + (1.0 - alpha) * self._result[i, j]
+
+    def _mask_image(self, image_array: np.ndarray, mask: np.ndarray) -> None:
+        """Apply the mask array to the image_array."""
+        for i in range(image_array.shape[0]):
+            for j in range(image_array.shape[1]):
+                value = mask[i, j] / 255
+                alpha = float(value[0] + value[1] + value[2]) / 3
+                color = alpha * image_array[i, j]
+                image_array[i, j] = color + (1.0 - alpha) * self._result[i, j]
+
+    def _process_mask(self, element: XElement, style: Style) -> None:
+        """Process the mask attributes and children elements."""
+        text = element.read_attribute('id').strip()
+        if text:
+            self._erase_image()
+            for child in element.children:
+                if child.name in self._parse_shapes:
+                    self._process_shape(child, style)
+            self._masks.update({f'url(#{text})': self._construct_image()})
 
     def _process_group(self, element: XElement, style: Style) -> None:
         """Process the group attributes and children elements."""
@@ -472,10 +505,15 @@ class LoadSVG:
             if child.name == 'g':
                 self._process_group(child, group_style)
             elif child.name in self._parse_shapes:
-                self._process_shape(child, group_style)
+                self._erase_image()
+                mask_name = self._process_shape(child, group_style)
+                image_array = self._construct_image()
+                if mask_name and mask_name in self._masks:
+                    self._mask_image(image_array, self._masks[mask_name])
+                self._add_image(image_array)
         self._context.restore()
 
-    def _process_shape(self, element: XElement, style: Style) -> None:
+    def _process_shape(self, element: XElement, style: Style) -> str:
         """Process the given shape element."""
         self._context.save()
         self._style = replace(style)
@@ -483,6 +521,7 @@ class LoadSVG:
         self._read_style_parameters(element)
         self._parse_shapes[element.name](element)
         self._context.restore()
+        return element.read_attribute('mask').strip()
 
     def _read_transforms(self, element: XElement) -> None:
         """Read and record the transform operations."""
@@ -859,8 +898,7 @@ class LoadSVG:
     ) -> Tuple[Vector, float, float]:
         """Find the center location and the two angles of the arc."""
         start = self._context_get_current_point()
-        start = start.rotated(-angle)
-        end = end.rotated(-angle)
+        start, end = start.rotated(-angle), end.rotated(-angle)
         chord = end - start
         radius.x = max(abs(chord.x) / 2, abs(radius.x))
         radius.y = max(abs(chord.y) / 2, abs(radius.y))
