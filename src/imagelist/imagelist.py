@@ -7,10 +7,9 @@ This module provides the following class definition:
 
 from __future__ import annotations
 
-__version__ = '1.3.8'
+__version__ = '1.3.9'
 
-# pylint: disable=no-name-in-module
-# pylint: disable=no-member
+# pylint: disable=no-name-in-module, disable=no-member
 import io
 import os
 import math
@@ -386,6 +385,7 @@ class Style:
     stroke_opacity: float = 1.0
     stroke_width: float = 1.0
     stroke: Tuple[float, ...] = NONE
+    mask: str = ''
 
 
 class LoadSVG:
@@ -401,24 +401,17 @@ class LoadSVG:
         self._style = Style()
         self._render_mode: Dict[int, Any] = {}
         self._masks: Dict[str, np.ndarray] = {}
-        self._parse_shapes: Dict[str, Any] = {
-            'path': self._parse_path,
-            'line': self._parse_line,
-            'rect': self._parse_rect,
-            'circle': self._parse_circle,
-            'ellipse': self._parse_ellipse,
-            'polygon': self._parse_polygon,
-            'polyline': self._parse_polyline,
-        }
+        self._shapes: Dict[str, Any] = {'polygon': self._polygon}
+        self._shapes.update({'rect': self._rect, 'circle': self._circle})
+        self._shapes.update({'line': self._line, 'ellipse': self._ellipse})
+        self._shapes.update({'path': self._path, 'polyline': self._polyline})
         try:
             root_element = XDocument(filename).root
             if root_element.name == 'svg':
                 self._init_image_area(root_element)
-                for child in root_element.children:
-                    if child.name == 'mask':
-                        self._process_mask(child, Style())
-                self._process_group(root_element, self._style)
-                self._image = Image.fromarray(self._result)  # type: ignore
+                self._process_masks(root_element, Style())
+                self._process_group(root_element, Style(), False)
+                self._image = Image.fromarray(self._result)
         except (OSError, ZeroDivisionError, IndexError, ValueError):
             pass
 
@@ -457,8 +450,8 @@ class LoadSVG:
         self._context_set_source_rgba(NONE)
         self._context.paint()
 
-    def _construct_image(self) -> np.ndarray:
-        """Construct an image array."""
+    def _render_image(self) -> np.ndarray:
+        """Render the image surface as an image array."""
         shape = (self._surface.get_height(), self._surface.get_width(), 4)
         buffer = self._surface.get_data()
         buffer_array = np.ndarray(shape, np.uint8, buffer)  # type: ignore
@@ -475,26 +468,28 @@ class LoadSVG:
                 color = image_array[i, j]
                 self._result[i, j] = color + (1.0 - alpha) * self._result[i, j]
 
-    def _mask_image(self, image_array: np.ndarray, mask: np.ndarray) -> None:
+    def _mask_image(self, image_array: np.ndarray, mask_array: np.ndarray):
         """Apply the mask array to the image_array."""
         for i in range(image_array.shape[0]):
             for j in range(image_array.shape[1]):
-                value = mask[i, j] / 255
+                value = mask_array[i, j] / 255
                 alpha = float(value[0] + value[1] + value[2]) / 3
                 color = alpha * image_array[i, j]
                 image_array[i, j] = color + (1.0 - alpha) * self._result[i, j]
 
-    def _process_mask(self, element: XElement, style: Style) -> None:
-        """Process the mask attributes and children elements."""
-        text = element.read_attribute('id').strip()
-        if text:
-            self._erase_image()
-            for child in element.children:
-                if child.name in self._parse_shapes:
-                    self._process_shape(child, style)
-            self._masks.update({f'url(#{text})': self._construct_image()})
+    def _process_masks(self, element: XElement, style: Style) -> None:
+        """Process and record all the mask elements."""
+        for child in element.children:
+            if child.name == 'defs':
+                self._process_masks(child, style)
+            elif child.name == 'mask':
+                text = child.read_attribute('id').strip()
+                if text:
+                    self._erase_image()
+                    self._process_group(child, style, True)
+                    self._masks.update({f'url(#{text})': self._render_image()})
 
-    def _process_group(self, element: XElement, style: Style) -> None:
+    def _process_group(self, element: XElement, style: Style, mask: bool):
         """Process the group attributes and children elements."""
         self._context.save()
         self._style = replace(style)
@@ -503,25 +498,28 @@ class LoadSVG:
         group_style = replace(self._style)
         for child in element.children:
             if child.name == 'g':
-                self._process_group(child, group_style)
-            elif child.name in self._parse_shapes:
-                self._erase_image()
-                mask_name = self._process_shape(child, group_style)
-                image_array = self._construct_image()
-                if mask_name and mask_name in self._masks:
-                    self._mask_image(image_array, self._masks[mask_name])
-                self._add_image(image_array)
+                self._process_group(child, group_style, mask)
+            elif child.name in self._shapes:
+                if mask:
+                    self._process_shape(child, group_style)
+                else:
+                    self._erase_image()
+                    self._process_shape(child, group_style)
+                    image_array = self._render_image()
+                    if self._style.mask and self._style.mask in self._masks:
+                        mask_array = self._masks[self._style.mask]
+                        self._mask_image(image_array, mask_array)
+                    self._add_image(image_array)
         self._context.restore()
 
-    def _process_shape(self, element: XElement, style: Style) -> str:
+    def _process_shape(self, element: XElement, style: Style) -> None:
         """Process the given shape element."""
         self._context.save()
         self._style = replace(style)
         self._read_transforms(element)
         self._read_style_parameters(element)
-        self._parse_shapes[element.name](element)
+        self._shapes[element.name](element)
         self._context.restore()
-        return element.read_attribute('mask').strip()
 
     def _read_transforms(self, element: XElement) -> None:
         """Read and record the transform operations."""
@@ -619,7 +617,7 @@ class LoadSVG:
         name = name.replace('-', '_')
         text = text.strip()
         if text:
-            value: Any = None
+            value: Any = text if name == 'mask' else None
             if name in floats:
                 value = max(0.0, self._get_float(text))
             elif name in ('fill', 'stroke'):
@@ -651,7 +649,7 @@ class LoadSVG:
         if style.stroke != NONE:
             style.stroke = style.stroke[:3] + (min(style.stroke_opacity, 1.0),)
 
-    def _parse_path(self, element: XElement) -> None:
+    def _path(self, element: XElement) -> None:
         """Parse the path attributes."""
         for index, color in enumerate((self._style.fill, self._style.stroke)):
             if color != NONE:
@@ -675,7 +673,7 @@ class LoadSVG:
                         self._context.close_path()
                 self._render_mode[index]()
 
-    def _parse_line(self, element: XElement) -> None:
+    def _line(self, element: XElement) -> None:
         """Parse the line attributes."""
         line: Dict[str, float] = {'x1': 0, 'y1': 0, 'x2': 0, 'y2': 0}
         for name in line:
@@ -686,7 +684,7 @@ class LoadSVG:
         self._context.line_to(line['x2'], line['y2'])
         self._context.stroke()
 
-    def _parse_rect(self, element: XElement) -> None:
+    def _rect(self, element: XElement) -> None:
         """Parse the rectangle attributes."""
         rect: Dict[str, float] = {'x': 0, 'y': 0, 'width': 0, 'height': 0}
         rect.update({'rx': 0, 'ry': 0})
@@ -731,7 +729,7 @@ class LoadSVG:
                         self._render_arc(radius, arc_end[i])
                 self._render_mode[index]()
 
-    def _parse_circle(self, element: XElement) -> None:
+    def _circle(self, element: XElement) -> None:
         """Parse the circle attributes."""
         circle: Dict[str, float] = {'r': 0, 'cx': 0, 'cy': 0}
         for name in circle:
@@ -744,7 +742,7 @@ class LoadSVG:
                 self._context.arc(0, 0, abs(circle['r']), 0, 2 * PI)
                 self._render_mode[index]()
 
-    def _parse_ellipse(self, element: XElement) -> None:
+    def _ellipse(self, element: XElement) -> None:
         """Parse the ellipse attributes."""
         ellipse: Dict[str, float] = {'rx': 0, 'ry': 0, 'cx': 0, 'cy': 0}
         for name in ellipse:
@@ -761,11 +759,11 @@ class LoadSVG:
                 self._context.arc(0, 0, 1, -PI, PI)
                 self._render_mode[index]()
 
-    def _parse_polygon(self, element: XElement) -> None:
+    def _polygon(self, element: XElement) -> None:
         """Parse the polygon points attribute."""
-        self._parse_polyline(element, close=True)
+        self._polyline(element, close=True)
 
-    def _parse_polyline(self, element: XElement, close: bool = False) -> None:
+    def _polyline(self, element: XElement, close: bool = False) -> None:
         """Parse the polyline points attribute."""
         points: List[Vector] = []
         text = element.read_attribute('points').replace(',', ' ')
